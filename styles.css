@@ -237,6 +237,13 @@ img {
     text-transform: uppercase;
     animation: fadeIn 1s ease-out 1s forwards;
     opacity: 0;
+    cursor: pointer;
+    transition: color var(--transition-fast);
+    z-index: 10;
+}
+
+.scroll-indicator:hover {
+    color: var(--color-accent);
 }
 
 .scroll-arrow {

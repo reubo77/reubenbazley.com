@@ -2,11 +2,22 @@
 // REUBEN BAZLEY - PORTFOLIO SCRIPTS
 // ========================================
 
+// Force scroll to top on page load/refresh (runs before content loads)
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+}
+window.scrollTo(0, 0);
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Ensure we're at the top
+    window.scrollTo(0, 0);
+    
     initializeFilters();
     initializeScrollAnimations();
     initializeSmoothScroll();
     initializeNavBackground();
+    initializeAutoScroll();
+    initializeTextDecrypt();
 });
 
 // ========================================
@@ -151,4 +162,182 @@ function initializeLazyLoad() {
     videoWrappers.forEach(wrapper => {
         lazyLoadObserver.observe(wrapper);
     });
+}
+
+// ========================================
+// AUTO-SCROLL ON CLICK
+// ========================================
+function initializeAutoScroll() {
+    const scrollIndicator = document.querySelector('.scroll-indicator');
+    if (!scrollIndicator) return;
+
+    let isAutoScrolling = false;
+    let animationId = null;
+    let startTime = null;
+    let currentSpeed = 0;
+    
+    // Scroll parameters
+    const maxSpeed = 4; // max pixels per frame
+    const accelerationTime = 1500; // ms to reach max speed
+    const pulseAmount = 0.3; // breathing effect intensity
+
+    // Make it clickable
+    scrollIndicator.style.cursor = 'pointer';
+
+    // Easing function - smooth acceleration
+    function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+    }
+
+    // Stop auto-scroll when user takes control
+    function stopAutoScroll() {
+        if (isAutoScrolling) {
+            isAutoScrolling = false;
+            startTime = null;
+            currentSpeed = 0;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+        }
+    }
+
+    // User interaction events that should stop auto-scroll
+    const stopEvents = ['wheel', 'touchstart', 'keydown'];
+    stopEvents.forEach(event => {
+        window.addEventListener(event, stopAutoScroll, { passive: true });
+    });
+
+    // Also stop if user clicks anywhere else
+    document.addEventListener('mousedown', (e) => {
+        if (!scrollIndicator.contains(e.target)) {
+            stopAutoScroll();
+        }
+    });
+
+    // Start auto-scroll on click
+    scrollIndicator.addEventListener('click', () => {
+        if (isAutoScrolling) {
+            stopAutoScroll();
+            return;
+        }
+
+        isAutoScrolling = true;
+        startTime = performance.now();
+
+        function autoScroll(currentTime) {
+            if (!isAutoScrolling) return;
+
+            // Check if we've reached the bottom
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (window.pageYOffset >= maxScroll) {
+                stopAutoScroll();
+                return;
+            }
+
+            // Calculate elapsed time
+            const elapsed = currentTime - startTime;
+            
+            // Smooth acceleration phase
+            const accelerationProgress = Math.min(elapsed / accelerationTime, 1);
+            const easedProgress = easeOutCubic(accelerationProgress);
+            
+            // Add a subtle breathing/pulse effect for organic feel
+            const pulse = 1 + Math.sin(elapsed / 400) * pulseAmount;
+            
+            // Calculate current speed with easing and pulse
+            currentSpeed = maxSpeed * easedProgress * pulse;
+            
+            // Ensure minimum speed once started
+            currentSpeed = Math.max(currentSpeed, 0.5);
+
+            window.scrollBy(0, currentSpeed);
+            animationId = requestAnimationFrame(autoScroll);
+        }
+
+        animationId = requestAnimationFrame(autoScroll);
+    });
+}
+
+// ========================================
+// TEXT DECRYPT EFFECT
+// ========================================
+function initializeTextDecrypt() {
+    const statNumbers = document.querySelectorAll('.stat-number');
+    if (!statNumbers.length) return;
+
+    // Characters to use for scrambling - mostly letters and numbers
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    
+    // Store original text and set up each element
+    statNumbers.forEach(el => {
+        el.dataset.original = el.textContent;
+        el.dataset.decrypted = 'false';
+    });
+
+    // Decrypt animation function
+    function decryptText(element) {
+        if (element.dataset.decrypted === 'true') return;
+        element.dataset.decrypted = 'true';
+
+        const originalText = element.dataset.original;
+        const duration = 2500; // total animation time (slower)
+        const frameRate = 50; // ms between frames (slower updates)
+        const totalFrames = duration / frameRate;
+        const revealDelay = totalFrames / originalText.length; // frames before each char locks in
+        
+        let frame = 0;
+        let lockedChars = 0;
+
+        function animate() {
+            frame++;
+            
+            // Calculate how many characters should be locked/revealed
+            lockedChars = Math.floor(frame / revealDelay);
+            
+            // Build the display string
+            let displayText = '';
+            for (let i = 0; i < originalText.length; i++) {
+                if (i < lockedChars) {
+                    // This character is revealed
+                    displayText += originalText[i];
+                } else if (originalText[i] === ' ') {
+                    // Preserve spaces
+                    displayText += ' ';
+                } else {
+                    // Scramble this character
+                    displayText += chars[Math.floor(Math.random() * chars.length)];
+                }
+            }
+            
+            element.textContent = displayText;
+            
+            // Continue until all characters are revealed
+            if (lockedChars < originalText.length) {
+                setTimeout(animate, frameRate);
+            } else {
+                element.textContent = originalText;
+            }
+        }
+
+        // Start with scrambled text
+        animate();
+    }
+
+    // Observe when stats come into view
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                // Small delay for dramatic effect
+                setTimeout(() => {
+                    decryptText(entry.target);
+                }, 200);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.5
+    });
+
+    statNumbers.forEach(el => observer.observe(el));
 }

@@ -165,97 +165,23 @@ function initializeLazyLoad() {
 }
 
 // ========================================
-// AUTO-SCROLL ON CLICK
+// SCROLL TO NEXT SECTION ON CLICK
 // ========================================
 function initializeAutoScroll() {
     const scrollIndicator = document.querySelector('.scroll-indicator');
     if (!scrollIndicator) return;
 
-    let isAutoScrolling = false;
-    let animationId = null;
-    let startTime = null;
-    let currentSpeed = 0;
-    
-    // Scroll parameters
-    const maxSpeed = 4; // max pixels per frame
-    const accelerationTime = 1500; // ms to reach max speed
-    const pulseAmount = 0.3; // breathing effect intensity
-
-    // Make it clickable
-    scrollIndicator.style.cursor = 'pointer';
-
-    // Easing function - smooth acceleration
-    function easeOutCubic(t) {
-        return 1 - Math.pow(1 - t, 3);
-    }
-
-    // Stop auto-scroll when user takes control
-    function stopAutoScroll() {
-        if (isAutoScrolling) {
-            isAutoScrolling = false;
-            startTime = null;
-            currentSpeed = 0;
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-        }
-    }
-
-    // User interaction events that should stop auto-scroll
-    const stopEvents = ['wheel', 'touchstart', 'keydown'];
-    stopEvents.forEach(event => {
-        window.addEventListener(event, stopAutoScroll, { passive: true });
-    });
-
-    // Also stop if user clicks anywhere else
-    document.addEventListener('mousedown', (e) => {
-        if (!scrollIndicator.contains(e.target)) {
-            stopAutoScroll();
-        }
-    });
-
-    // Start auto-scroll on click
     scrollIndicator.addEventListener('click', () => {
-        if (isAutoScrolling) {
-            stopAutoScroll();
-            return;
+        const aboutSection = document.querySelector('#about');
+        if (aboutSection) {
+            const navHeight = document.querySelector('.nav').offsetHeight;
+            const targetPosition = aboutSection.getBoundingClientRect().top + window.pageYOffset - navHeight;
+
+            window.scrollTo({
+                top: targetPosition,
+                behavior: 'smooth'
+            });
         }
-
-        isAutoScrolling = true;
-        startTime = performance.now();
-
-        function autoScroll(currentTime) {
-            if (!isAutoScrolling) return;
-
-            // Check if we've reached the bottom
-            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-            if (window.pageYOffset >= maxScroll) {
-                stopAutoScroll();
-                return;
-            }
-
-            // Calculate elapsed time
-            const elapsed = currentTime - startTime;
-            
-            // Smooth acceleration phase
-            const accelerationProgress = Math.min(elapsed / accelerationTime, 1);
-            const easedProgress = easeOutCubic(accelerationProgress);
-            
-            // Add a subtle breathing/pulse effect for organic feel
-            const pulse = 1 + Math.sin(elapsed / 400) * pulseAmount;
-            
-            // Calculate current speed with easing and pulse
-            currentSpeed = maxSpeed * easedProgress * pulse;
-            
-            // Ensure minimum speed once started
-            currentSpeed = Math.max(currentSpeed, 0.5);
-
-            window.scrollBy(0, currentSpeed);
-            animationId = requestAnimationFrame(autoScroll);
-        }
-
-        animationId = requestAnimationFrame(autoScroll);
     });
 }
 
